@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" href="data:,">
+    <style>
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f7f7f4;
+        color: #26231f;
+      }
+
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 32px 20px;
+      }
+
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+      }
+
+      p {
+        line-height: 1.7;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin: 24px 0;
+      }
+
+      .settings {
+        display: grid;
+        gap: 10px;
+        margin: 20px 0 8px;
+        max-width: 560px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        font-size: 14px;
+        color: #5b5349;
+      }
+
+      input {
+        box-sizing: border-box;
+        width: 100%;
+        border: 1px solid #cfc8bd;
+        border-radius: 6px;
+        padding: 10px 12px;
+        font-size: 15px;
+        background: white;
+        color: #26231f;
+      }
+
+      button {
+        border: 0;
+        border-radius: 6px;
+        padding: 11px 16px;
+        background: #26231f;
+        color: white;
+        font-size: 15px;
+        cursor: pointer;
+      }
+
+      button.secondary {
+        background: #61584d;
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      #result {
+        background: white;
+        border: 1px solid #ddd8cf;
+        border-radius: 8px;
+        padding: 18px;
+        min-height: 80px;
+      }
+
+      a {
+        color: #0b5cab;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>PubMed 四大期刊電子報</h1>
+      <p>先用 Demo 確認 Google Sheet 與 HTML 輸出流程。正式流程使用 Gemini，需設定 PUBMED_API_KEY 與 GEMINI_API_KEY。</p>
+
+      <div class="settings">
+        <label>
+          Gemini API key
+          <input id="geminiApiKey" type="password" autocomplete="off" placeholder="AIza...">
+        </label>
+        <label>
+          Gemini model
+          <input id="geminiModel" type="text" value="gemini-3.1-flash-lite">
+        </label>
+      </div>
+
+      <div class="actions">
+        <button class="secondary" id="statusButton" onclick="checkStatus()">檢查設定</button>
+        <button class="secondary" id="saveSettingsButton" onclick="saveGeminiSettings()">保存 Gemini 設定</button>
+        <button id="demoButton" onclick="runDemo()">產生 Demo 電子報</button>
+        <button id="pipelineButton" class="secondary" onclick="runPipeline()">執行正式流程</button>
+        <button id="lineButton" class="secondary" onclick="runLinePushTest()">測試 LINE 推播</button>
+        <button class="secondary" id="installWeeklyButton" onclick="installWeeklyTrigger()">安裝每週執行</button>
+        <button class="secondary" id="removeWeeklyButton" onclick="removeWeeklyTrigger()">移除每週執行</button>
+      </div>
+
+      <div id="result">尚未執行。</div>
+    </main>
+
+    <script>
+      function setBusy(isBusy) {
+        document.getElementById('statusButton').disabled = isBusy;
+        document.getElementById('saveSettingsButton').disabled = isBusy;
+        document.getElementById('demoButton').disabled = isBusy;
+        document.getElementById('pipelineButton').disabled = isBusy;
+        document.getElementById('lineButton').disabled = isBusy;
+        document.getElementById('installWeeklyButton').disabled = isBusy;
+        document.getElementById('removeWeeklyButton').disabled = isBusy;
+      }
+
+      function checkStatus() {
+        setBusy(true);
+        document.getElementById('result').textContent = '檢查設定中...';
+        google.script.run
+          .withSuccessHandler(showStatus)
+          .withFailureHandler(showError)
+          .getSetupStatusFromUi();
+      }
+
+      function saveGeminiSettings() {
+        const key = document.getElementById('geminiApiKey').value;
+        const model = document.getElementById('geminiModel').value;
+        setBusy(true);
+        document.getElementById('result').textContent = '保存 Gemini 設定中...';
+        google.script.run
+          .withSuccessHandler(showStatus)
+          .withFailureHandler(showError)
+          .saveGeminiSettingsFromUi(key, model);
+      }
+
+      function runDemo() {
+        setBusy(true);
+        document.getElementById('result').textContent = 'Demo 電子報產生中...';
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showError)
+          .runDemoFromUi();
+      }
+
+      function runPipeline() {
+        setBusy(true);
+        document.getElementById('result').textContent = '正式流程執行中...';
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showError)
+          .runPipelineFromUi();
+      }
+
+      function runLinePushTest() {
+        setBusy(true);
+        document.getElementById('result').textContent = 'LINE 推播測試中...';
+        google.script.run
+          .withSuccessHandler(showResult)
+          .withFailureHandler(showError)
+          .runLinePushTestFromUi();
+      }
+
+      function installWeeklyTrigger() {
+        setBusy(true);
+        document.getElementById('result').textContent = '安裝每週固定執行中...';
+        google.script.run
+          .withSuccessHandler(showMessage)
+          .withFailureHandler(showError)
+          .installWeeklyTriggerFromUi();
+      }
+
+      function removeWeeklyTrigger() {
+        setBusy(true);
+        document.getElementById('result').textContent = '移除每週固定執行中...';
+        google.script.run
+          .withSuccessHandler(showMessage)
+          .withFailureHandler(showError)
+          .removeWeeklyTriggerFromUi();
+      }
+
+      function showResult(result) {
+        setBusy(false);
+        document.getElementById('result').innerHTML = [
+          '<p>狀態：' + escapeHtml(result.status) + '</p>',
+          result.message ? '<p>' + escapeHtml(result.message) + '</p>' : '',
+          result.lineStatus ? '<p>LINE：' + escapeHtml(result.lineStatus) + '</p>' : '',
+          result.lineMessage ? '<p>' + escapeHtml(result.lineMessage) + '</p>' : '',
+          result.spreadsheetUrl ? '<p><a href="' + result.spreadsheetUrl + '" target="_blank">開啟 Google Sheet</a></p>' : '',
+          result.newsletterUrl ? '<p><a href="' + result.newsletterUrl + '" target="_blank">開啟 HTML 電子報</a></p>' : ''
+        ].join('');
+      }
+
+      function showMessage(message) {
+        setBusy(false);
+        document.getElementById('result').textContent = message;
+      }
+
+      function showStatus(status) {
+        setBusy(false);
+        document.getElementById('geminiModel').value = status.geminiModel;
+        document.getElementById('geminiApiKey').value = '';
+        document.getElementById('result').innerHTML = [
+          '<p>Script ID：' + escapeHtml(status.scriptId) + '</p>',
+          '<p>PubMed API key：' + (status.hasPubMedApiKey ? '已設定' : '尚未設定') + '</p>',
+          '<p>Gemini API key：' + (status.hasGeminiApiKey ? '已設定' : '尚未設定') + '</p>',
+          '<p>Gemini model：' + escapeHtml(status.geminiModel) + '</p>',
+          '<p>正式流程翻譯 provider：' + escapeHtml(status.translationProvider) + '</p>',
+          '<p>LINE Channel access token：' + (status.hasLineChannelAccessToken ? '已設定' : '尚未設定') + '</p>',
+          '<p>LINE User ID：' + (status.hasLineUserId ? '已設定' : '尚未設定') + '</p>',
+          '<p>Drive 目標：' + escapeHtml(status.driveTarget) + '</p>',
+          status.webAppUrl ? '<p><a href="' + status.webAppUrl + '" target="_blank">目前 Web App URL</a></p>' : ''
+        ].join('');
+      }
+
+      function showError(error) {
+        setBusy(false);
+        document.getElementById('result').textContent = '執行失敗：' + error.message;
+      }
+
+      function escapeHtml(value) {
+        return String(value || '')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;')
+          .replace(/"/g, '&quot;')
+          .replace(/'/g, '&#39;');
+      }
+    </script>
+  </body>
+</html>
